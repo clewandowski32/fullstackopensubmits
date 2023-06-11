@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+
+import personsService from './services/persons'
 
 const Filter = ({filter, handleFilterChange}) => {
   return(
@@ -36,11 +37,23 @@ const PersonForm = ({addPerson, newName,
 }
 
 const Persons = ({personsToShow}) => {
+
+  const handleDelete = (person) => {
+    const confirmed = window.confirm(`Delete ${person.name} ?`)
+    
+    if(confirmed){
+      personsService.deleteElem(person.id)
+    }
+  }
+
+
   return(
     <div>
       {personsToShow.map(person => 
         <div key={person.id}>
-          {person.name} {person.number}
+          {person.name} {person.number} 
+          <button onClick={() => handleDelete(person)}>
+            delete</button>
         </div>
       )}
     </div>
@@ -56,12 +69,10 @@ const App = () => {
 
   const hook = () => {
     console.log('effect')
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        console.log('promise fulfilled')
-        setPersons(response.data)
-      })
+    personsService
+      .getAll()
+      .then(initialPersons => 
+      setPersons(initialPersons))
   }
 
   console.log('render', persons.length, 'notes')
@@ -91,18 +102,37 @@ const App = () => {
   
   const addPerson = (event) => {
     event.preventDefault()
-    const personObject = { name: newName, number: newNumber, id: persons.length + 1}
+    const personObject = { name: newName, number: newNumber}
 
     const existingIndex = persons.findIndex(person => person.name === personObject.name);
 
     if(existingIndex !== -1){
-      console.log(persons[personObject.name])
-      console.log(persons)
-      console.log(persons.indexOf(personObject))
-      alert(`${personObject.name} is already added to phonebook`)
+      const confirmed = window.confirm(`${personObject.name} is already in the phonebook, replace the old number with a new one?`)
+      if(confirmed){
+        const currPerson = persons.find(p => p.name === personObject.name)
+        const updatedPerson = {...currPerson, number: newNumber}
+
+        personsService
+          .update(updatedPerson.id, personObject)
+          .then(returnedPerson =>{
+            setPersons(persons.map(person => 
+                       person.id !== updatedPerson.id ? 
+                       person :
+                       returnedPerson
+                       ))
+            setNewName('')
+            setNewNumber('')
+          })
+      }
     }
     else{
-      setPersons(persons.concat(personObject))
+      personsService
+        .create(personObject)
+        .then(returnedPerson =>{
+          setPersons(persons.concat(returnedPerson))
+          setNewName('')
+          setNewNumber('')
+        })
     }
   }
 
