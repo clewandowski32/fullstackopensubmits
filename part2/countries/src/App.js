@@ -2,6 +2,8 @@ import {useState, useEffect} from 'react'
 import countriesService from './services/countries'
 
 const ShowCountry = ({visible}) => {
+
+  
   return(
     <div>
       <h1>{visible.name.common}</h1>
@@ -14,7 +16,7 @@ const ShowCountry = ({visible}) => {
       <h3>languages:</h3>
         <ul>
           {Object.values(visible.languages).map(language =>(
-            <li>
+            <li key={language}>
               {language}
             </li>
           ))}
@@ -27,6 +29,20 @@ const ShowCountry = ({visible}) => {
 
 const Display = ({countries}) => {
   const [displayedCountries, setDisplayedCountries] = useState([])
+
+  const [weather, setWeather] = useState([])
+
+  
+  //useEffect hook has [countries] dependency which means
+  //it will only be triggered when 'countries' array changes
+  useEffect(() => {
+    if (countries.length === 1) {
+      const country = countries[0];
+      countriesService.getWeather(country).then((newWeather) => {
+        setWeather(newWeather);
+      });
+    }
+  }, [countries]);
   
   const toggleShow = (country) => {
     if(displayedCountries.includes(country)){
@@ -36,8 +52,12 @@ const Display = ({countries}) => {
       setDisplayedCountries(displayedCountries.concat(country))
     }
   }
+
   
-  if(countries === null){
+  
+  console.log(countries)
+
+  if(countries === []){
     return null
   }
   else if(countries.length > 10){
@@ -50,7 +70,7 @@ const Display = ({countries}) => {
   else if(countries.length < 10 && countries.length > 1){
     return(countries.map(country => {
       return(
-      <div>
+      <div key={country.cca3}>
         {country.name.common}
         <button onClick ={() => toggleShow(country)}>
           {displayedCountries.includes(country) ? 'hide' : 'show'}
@@ -63,38 +83,33 @@ const Display = ({countries}) => {
     }))
   }
   else{
+    console.log(weather)
+    const temp = weather.list[0].main.temp - 273.15
+    const tempRounded = temp.toFixed(2)
+    const icon = weather.list[0].weather[0].icon
     return(
       countries.map(country => {
-        console.log(country.languages)
-        countriesService
-          .getWeather(country)
-          //.then(weather =>
-          //     console.log(weather))
         return(
-          <div>
+          <div key={country.cca3}>
             <ShowCountry visible={country} />
-            <h2>
-              Weather in {country.capital}
-            </h2>
+            <h2>Weather in {country.capital}</h2>
+            temperature {tempRounded} Celsius
+            <img src={`https://openweathermap.org/img/wn/${icon}@2x.png`} />
           </div>
-        )
-      }
-      )
-    )
+      )}
+    ))
   }
 }
 
 const App = () => {
-  const [countrySearch, setCountrySearch] = useState(null)
+  const [countrySearch, setCountrySearch] = useState('')
 
   const [countries, setCountries] = useState([])
-
-  const [weather, setWeather] = useState([])
 
   const handleSearchChange = (event) => {
     console.log(event.target.value)
     if(event.target.value === ''){
-      setCountrySearch(null)
+      setCountrySearch('')
     }
     else{
       setCountrySearch(event.target.value)
@@ -111,8 +126,8 @@ const App = () => {
   }, [])
 
   const searchInput = () => {
-    if (countrySearch === null){
-      return null
+    if (countrySearch === ''){
+      return []
     }
     const filteredCountries = countries.filter(country => 
                               country.name.common.toLowerCase()
@@ -128,7 +143,7 @@ const App = () => {
         onChange={handleSearchChange}
       >
       </input>
-      <Display countries={searchInput()}/>
+      <Display key={1} countries={searchInput()}/>
     </div>
   );
 }
